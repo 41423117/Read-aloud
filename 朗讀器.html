@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>讀墨器</title>
+    <style>
+        body {
+            font-family: "Noto Serif TC", "Microsoft JhengHei", serif;
+            background-color: #1a1a1a;
+            color: #d4d4d4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            width: 90%;
+            max-width: 850px;
+            background: #252525;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid #3d3d3d;
+        }
+        h2 { color: #a67c52; text-align: center; letter-spacing: 2px; }
+        
+        .text-display {
+            width: 100%;
+            height: 350px;
+            padding: 15px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            font-size: 19px;
+            line-height: 1.8;
+            box-sizing: border-box;
+            background-color: #1e1e1e;
+            color: #ccc;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            cursor: text;
+        }
+        
+        .sentence {
+            padding: 2px 4px;
+            border-radius: 3px;
+            transition: background-color 0.3s;
+        }
+        
+        .current-sentence {
+            background-color: #a67c52 !important;
+            color: #1a1a1a !important;
+            font-weight: bold;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        button, select, input[type="file"] {
+            padding: 10px 20px;
+            font-size: 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            border: 1px solid #a67c52;
+            background: #2a2a2a;
+            color: #a67c52;
+            transition: 0.2s;
+        }
+        
+        button:hover { background: #a67c52; color: #1a1a1a; }
+        
+        .status-info {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #777;
+            text-align: center;
+        }
+        
+        .file-upload {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .voice-filter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 5px;
+        }
+        
+        .voice-filter label {
+            font-size: 13px;
+            color: #a67c52;
+        }
+        
+        .voice-filter select {
+            padding: 5px 10px;
+            font-size: 13px;
+            background: #2a2a2a;
+            color: #a67c52;
+            border: 1px solid #a67c52;
+        }
+        
+        .shortcut-hint {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+        }
+        
+        .voice-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+        
+        .voice-preset-btn {
+            padding: 8px 12px;
+            font-size: 13px;
+            background: #2a2a2a;
+            color: #d4a762;
+            border: 1px solid #d4a762;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .voice-preset-btn:hover {
+            background: #d4a762;
+            color: #1a1a1a;
+        }
+        
+        .voice-preset-btn.active {
+            background: #d4a762;
+            color: #1a1a1a;
+            font-weight: bold;
+        }
+        
+        .voice-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .voice-slider {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .voice-slider label {
+            font-size: 12px;
+            color: #a67c52;
+        }
+        
+        .voice-slider input[type="range"] {
+            width: 150px;
+            height: 6px;
+            background: #2a2a2a;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .voice-slider input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #a67c52;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .voice-slider .value {
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .edit-hint {
+            margin-top: 5px;
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>朗讀器</h2>
+    
+    <div class="file-upload">
+        <label>選取檔案：</label>
+        <input type="file" id="fileInput" accept=".txt,.html,.js,.css,.json,.md">
+        <button id="clearTextBtn" style="margin-left: 10px; padding: 8px 12px; font-size: 13px;">清除文字</button>
+    </div>
+
+    <div id="textDisplay" class="text-display" contenteditable="true" placeholder="這世間，唯有利益永恆... 請輸入或貼上您的文字。">這世間，唯有利益永恆... 請輸入或貼上您的文字。</div>
+    
+    <div class="edit-hint">
+        直接在此輸入文字或貼上文字，系統會自動偵測更新
+    </div>
+    
+    <div class="shortcut-hint">
+        快捷鍵：Space(播放/暫停) | F/1(上一句) | J/2(下一句) | Home/End(句首/句尾) | Esc(停止)
+    </div>
+
+    <div class="controls">
+        <button id="playPauseBtn">開始 / 暫停 (Space)</button>
+        <button id="prevBtn">上一句 (Home/F/1)</button>
+        <button id="nextBtn">下一句 (End/J/2)</button>
+        <button id="stopBtn">停止 (Esc)</button>
+        
+        <div>
+            <label>語速：</label>
+            <select id="rate">
+                <option value="0.7">0.7x</option>
+                <option value="0.8">0.8x</option>
+                <option value="0.9">0.9x</option>
+                <option value="1.0" selected>1.0x</option>
+                <option value="1.1">1.1x</option>
+                <option value="1.2">1.2x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2.0">2.0x</option>
+            </select>
+        </div>
+
+        <div>
+            <label>聲線：</label>
+            <select id="voiceSelect"></select>
+        </div>
+    </div>
+    
+    <!-- 聲線預設按鈕 -->
+    <div class="voice-presets" id="voicePresets">
+        <button class="voice-preset-btn active" data-preset="fagyuan">方源梟雄</button>
+        <button class="voice-preset-btn" data-preset="mature">成熟穩重</button>
+        <button class="voice-preset-btn" data-preset="youth">青春朝氣</button>
+        <button class="voice-preset-btn" data-preset="elder">長者智慧</button>
+        <button class="voice-preset-btn" data-preset="villain">反派陰險</button>
+        <button class="voice-preset-btn" data-preset="hero">英雄正氣</button>
+        <button class="voice-preset-btn" data-preset="gentle">溫柔輕聲</button>
+        <button class="voice-preset-btn" data-preset="powerful">強力威嚴</button>
+    </div>
+    
+    <!-- 聲線細部調整 -->
+    <div class="voice-controls">
+        <div class="voice-slider">
+            <label for="pitchRange">音調</label>
+            <input type="range" id="pitchRange" min="0.5" max="2.0" step="0.1" value="0.85">
+            <span class="value" id="pitchValue">0.85</span>
+        </div>
+        
+        <div class="voice-slider">
+            <label for="volumeRange">音量</label>
+            <input type="range" id="volumeRange" min="0.1" max="1.0" step="0.1" value="1.0">
+            <span class="value" id="volumeValue">1.0</span>
+        </div>
+        
+        <div class="voice-slider">
+            <label for="intonationRange">語調變化</label>
+            <input type="range" id="intonationRange" min="0.5" max="2.0" step="0.1" value="1.0">
+            <span class="value" id="intonationValue">1.0</span>
+        </div>
+        
+        <button id="resetVoiceBtn">重置聲線</button>
+    </div>
+    
+    <div class="voice-filter">
+        <label>篩選語音：</label>
+        <select id="languageFilter">
+            <option value="all">全部語音</option>
+            <option value="zh">中文語音</option>
+            <option value="en">英文語音</option>
+            <option value="ja">日文語音</option>
+            <option value="ko">韓文語音</option>
+        </select>
+    </div>
+
+    <div class="status-info" id="status">只要利益足夠，萬物皆可利用。輸入文字後按空格鍵開始朗讀。</div>
+</div>
+
+<script>
+    const synth = window.speechSynthesis;
+    const textDisplay = document.getElementById('textDisplay');
+    const fileInput = document.getElementById('fileInput');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const voiceSelect = document.getElementById('voiceSelect');
+    const languageFilter = document.getElementById('languageFilter');
+    const statusDiv = document.getElementById('status');
+    const clearTextBtn = document.getElementById('clearTextBtn');
+    
+    // 聲線控制元素
+    const pitchRange = document.getElementById('pitchRange');
+    const pitchValue = document.getElementById('pitchValue');
+    const volumeRange = document.getElementById('volumeRange');
+    const volumeValue = document.getElementById('volumeValue');
+    const intonationRange = document.getElementById('intonationRange');
+    const intonationValue = document.getElementById('intonationValue');
+    const resetVoiceBtn = document.getElementById('resetVoiceBtn');
+
+    let sentences = [];
+    let currentIdx = 0;
+    let isPaused = false;
+    let currentUtterance = null;
+    let sentenceElements = [];
+    let allVoices = [];
+    let filteredVoices = [];
+    let textChanged = false; // 追蹤文字是否變更
+    
+    // 聲線預設設定
+    const voicePresets = {
+        // 方源梟雄 - 低沉、冷酷、充滿權謀感
+        fagyuan: { pitch: 0.85, volume: 1.0, rate: 1.0, intonation: 1.0 },
+        
+        // 成熟穩重 - 中低音調，平穩有力
+        mature: { pitch: 0.9, volume: 1.0, rate: 1.0, intonation: 0.9 },
+        
+        // 青春朝氣 - 較高音調，活潑有活力
+        youth: { pitch: 1.3, volume: 1.0, rate: 1.1, intonation: 1.2 },
+        
+        // 長者智慧 - 低沉緩慢，充滿智慧感
+        elder: { pitch: 0.75, volume: 1.0, rate: 0.9, intonation: 0.8 },
+        
+        // 反派陰險 - 低沈而帶有詭譎感
+        villain: { pitch: 0.8, volume: 0.9, rate: 1.0, intonation: 1.1 },
+        
+        // 英雄正氣 - 中高音調，堅定有力
+        hero: { pitch: 1.1, volume: 1.0, rate: 1.0, intonation: 1.0 },
+        
+        // 溫柔輕聲 - 中等音調，輕柔平靜
+        gentle: { pitch: 1.0, volume: 0.8, rate: 0.9, intonation: 0.9 },
+        
+        // 強力威嚴 - 低沉有力，充滿威嚴感
+        powerful: { pitch: 0.7, volume: 1.0, rate: 1.0, intonation: 0.9 }
+    };
+    
+    // 當前聲線設定
+    let currentVoiceSettings = {
+        pitch: parseFloat(pitchRange.value),
+        volume: parseFloat(volumeRange.value),
+        intonation: parseFloat(intonationRange.value)
+    };
+
+    // 初始化語音列表
+    function populateVoiceList() {
+        allVoices = synth.getVoices();
+        
+        const filter = languageFilter.value;
+        filteredVoices = allVoices.filter(voice => {
+            if (filter === 'all') return true;
+            if (filter === 'zh') return voice.lang.includes('zh');
+            if (filter === 'en') return voice.lang.includes('en');
+            if (filter === 'ja') return voice.lang.includes('ja');
+            if (filter === 'ko') return voice.lang.includes('ko');
+            return true;
+        });
+        
+        // 排序語音：中文優先，然後按語言代碼排序
+        filteredVoices.sort((a, b) => {
+            // 中文語音優先
+            const aIsChinese = a.lang.includes('zh');
+            const bIsChinese = b.lang.includes('zh');
+            if (aIsChinese && !bIsChinese) return -1;
+            if (!aIsChinese && bIsChinese) return 1;
+            
+            // 然後按語言代碼排序
+            return a.lang.localeCompare(b.lang);
+        });
+        
+        voiceSelect.innerHTML = '';
+        
+        filteredVoices.forEach((voice) => {
+            const option = document.createElement('option');
+            
+            // 根據語音特性添加描述
+            let description = '';
+            const voiceName = voice.name.toLowerCase();
+            
+            if (voiceName.includes('yunxi') || voiceName.includes('yunjian')) {
+                description = ' - 推薦(方源)';
+            } else if (voiceName.includes('xiaoxiao') || voiceName.includes('xiaoyi')) {
+                description = ' - 女性';
+            } else if (voiceName.includes('huihui') || voiceName.includes('yaoyao')) {
+                description = ' - 輕柔';
+            } else if (voiceName.includes('kangkang') || voiceName.includes('danny')) {
+                description = ' - 男性';
+            } else if (voiceName.includes('zhiwei') || voiceName.includes('yating')) {
+                description = ' - 自然';
+            }
+            
+            option.textContent = `${voice.name} (${voice.lang})${description}`;
+            option.value = voice.name;
+            
+            // 優先尋找 Microsoft Yunxi (雲希) 或 Yunjian (雲健) - 方源聲線
+            if (voice.name.includes('Yunxi') || voice.name.includes('Yunjian')) {
+                option.selected = true;
+            }
+            voiceSelect.appendChild(option);
+        });
+        
+        // 如果沒有選中任何語音，選擇第一個
+        if (!voiceSelect.value && filteredVoices.length > 0) {
+            voiceSelect.selectedIndex = 0;
+        }
+        
+        statusDiv.innerText = `載入 ${filteredVoices.length} 個語音 (共 ${allVoices.length} 個)`;
+    }
+
+    // 初始化頁面
+    function initPage() {
+        populateVoiceList();
+        
+        // 更新滑桿數值顯示
+        updateSliderValues();
+        
+        // 設置預設按鈕事件
+        const presetButtons = document.querySelectorAll('.voice-preset-btn');
+        presetButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                // 移除所有按鈕的主動狀態
+                presetButtons.forEach(b => b.classList.remove('active'));
+                // 添加當前按鈕的主動狀態
+                this.classList.add('active');
+                
+                // 應用聲線預設
+                const presetName = this.dataset.preset;
+                applyVoicePreset(presetName);
+            });
+        });
+        
+        // 監聽文字區域的輸入事件
+        textDisplay.addEventListener('input', handleTextInput);
+        
+        // 監聽文字區域的貼上事件
+        textDisplay.addEventListener('paste', function(e) {
+            // 讓瀏覽器完成貼上動作後再處理
+            setTimeout(() => {
+                handleTextInput();
+                statusDiv.innerText = "已貼上文字，按空格鍵開始朗讀。";
+            }, 10);
+        });
+        
+        // 清除文字按鈕事件
+        clearTextBtn.addEventListener('click', function() {
+            textDisplay.textContent = '';
+            sentences = [];
+            sentenceElements = [];
+            currentIdx = 0;
+            textChanged = true;
+            stopSpeaking();
+            statusDiv.innerText = "文字已清除，請輸入新的文字。";
+        });
+        
+        // 初始準備文字
+        prepareTextForHighlighting();
+    }
+
+    // 處理文字輸入事件
+    function handleTextInput() {
+        textChanged = true;
+        
+        // 如果正在朗讀，停止朗讀
+        if (synth.speaking) {
+            stopSpeaking();
+            statusDiv.innerText = "偵測到文字變更，朗讀已停止。請按空格鍵重新開始。";
+        } else {
+            // 更新狀態提示
+            const text = textDisplay.textContent.trim();
+            const charCount = text.length;
+            const wordCount = text ? text.split(/\s+/).length : 0;
+            
+            statusDiv.innerText = `已輸入 ${charCount} 字元，${wordCount} 個詞。按空格鍵開始朗讀。`;
+        }
+    }
+
+    // 應用聲線預設
+    function applyVoicePreset(presetName) {
+        const preset = voicePresets[presetName];
+        if (!preset) return;
+        
+        // 更新滑桿和數值顯示
+        pitchRange.value = preset.pitch;
+        volumeRange.value = preset.volume;
+        intonationRange.value = preset.intonation;
+        
+        // 更新語速選擇
+        document.getElementById('rate').value = preset.rate;
+        
+        // 更新數值顯示
+        updateSliderValues();
+        
+        // 更新當前設定
+        currentVoiceSettings.pitch = preset.pitch;
+        currentVoiceSettings.volume = preset.volume;
+        currentVoiceSettings.intonation = preset.intonation;
+        
+        // 狀態提示
+        let presetDisplayName = '';
+        switch(presetName) {
+            case 'fagyuan': presetDisplayName = '方源梟雄'; break;
+            case 'mature': presetDisplayName = '成熟穩重'; break;
+            case 'youth': presetDisplayName = '青春朝氣'; break;
+            case 'elder': presetDisplayName = '長者智慧'; break;
+            case 'villain': presetDisplayName = '反派陰險'; break;
+            case 'hero': presetDisplayName = '英雄正氣'; break;
+            case 'gentle': presetDisplayName = '溫柔輕聲'; break;
+            case 'powerful': presetDisplayName = '強力威嚴'; break;
+        }
+        
+        statusDiv.innerText = `已應用 "${presetDisplayName}" 聲線預設`;
+        
+        // 如果正在朗讀，重新開始當前句子以應用新設定
+        if (synth.speaking && !synth.paused && currentUtterance) {
+            const tempIdx = currentIdx;
+            synth.cancel();
+            setTimeout(() => speakSentence(tempIdx), 100);
+        }
+    }
+
+    // 更新滑桿數值顯示
+    function updateSliderValues() {
+        pitchValue.textContent = pitchRange.value;
+        volumeValue.textContent = volumeRange.value;
+        intonationValue.textContent = intonationRange.value;
+    }
+
+    // 重置聲線設定
+    function resetVoiceSettings() {
+        // 重置為方源預設
+        applyVoicePreset('fagyuan');
+        
+        // 重置預設按鈕狀態
+        const presetButtons = document.querySelectorAll('.voice-preset-btn');
+        presetButtons.forEach(b => b.classList.remove('active'));
+        document.querySelector('[data-preset="fagyuan"]').classList.add('active');
+        
+        statusDiv.innerText = "聲線設定已重置為方源梟雄預設";
+    }
+
+    // 文件上傳處理
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            textDisplay.textContent = e.target.result;
+            textChanged = true;
+            prepareTextForHighlighting();
+            statusDiv.innerText = "文字已載入，準備收割。按空格鍵開始朗讀。";
+        };
+        reader.readAsText(file);
+    });
+
+    // 語音篩選器事件
+    languageFilter.addEventListener('change', populateVoiceList);
+
+    // 聲線控制事件
+    pitchRange.addEventListener('input', function() {
+        pitchValue.textContent = this.value;
+        currentVoiceSettings.pitch = parseFloat(this.value);
+        applyVoiceChanges();
+    });
+    
+    volumeRange.addEventListener('input', function() {
+        volumeValue.textContent = this.value;
+        currentVoiceSettings.volume = parseFloat(this.value);
+        applyVoiceChanges();
+    });
+    
+    intonationRange.addEventListener('input', function() {
+        intonationValue.textContent = this.value;
+        currentVoiceSettings.intonation = parseFloat(this.value);
+        applyVoiceChanges();
+    });
+    
+    resetVoiceBtn.addEventListener('click', resetVoiceSettings);
+    
+    // 應用聲線變化
+    function applyVoiceChanges() {
+        // 更新預設按鈕狀態
+        const presetButtons = document.querySelectorAll('.voice-preset-btn');
+        presetButtons.forEach(b => b.classList.remove('active'));
+        
+        // 狀態提示
+        statusDiv.innerText = `聲線調整：音調 ${currentVoiceSettings.pitch} | 音量 ${currentVoiceSettings.volume} | 語調 ${currentVoiceSettings.intonation}`;
+        
+        // 如果正在朗讀，重新開始當前句子以應用新設定
+        if (synth.speaking && !synth.paused && currentUtterance) {
+            const tempIdx = currentIdx;
+            synth.cancel();
+            setTimeout(() => speakSentence(tempIdx), 100);
+        }
+    }
+
+    // 將文本分割為句子並創建高亮元素
+    function prepareTextForHighlighting() {
+        const text = textDisplay.textContent.trim();
+        if (!text) {
+            // 如果沒有文字，顯示預設提示
+            if (textDisplay.textContent.trim() === '' && textDisplay.textContent.includes('請輸入')) {
+                return [];
+            }
+        }
+        
+        // 清除之前的高亮
+        if (sentenceElements && sentenceElements.length > 0) {
+            sentenceElements.forEach(el => {
+                if (el.classList) el.classList.remove('current-sentence');
+            });
+        }
+        
+        // 分割句子（根據標點符號和換行）
+        sentences = text.split(/[。！？；\.!\?;\n\r]+/).filter(s => s.trim().length > 0);
+        
+        // 如果沒有句子，返回空數組
+        if (sentences.length === 0) return [];
+        
+        // 將文本替換為帶有高亮功能的句子
+        textDisplay.innerHTML = '';
+        sentenceElements = [];
+        
+        sentences.forEach((sentence, index) => {
+            const span = document.createElement('span');
+            span.className = 'sentence';
+            span.textContent = sentence.trim();
+            
+            // 如果不是最後一句，添加適當的標點符號
+            if (index < sentences.length - 1) {
+                // 根據原文判斷該用什麼標點（簡化處理）
+                const originalText = textDisplay.textContent;
+                span.textContent += '。';
+            }
+            
+            span.dataset.index = index;
+            textDisplay.appendChild(span);
+            sentenceElements.push(span);
+            
+            // 添加換行（除了最後一句）
+            if (index < sentences.length - 1) {
+                textDisplay.appendChild(document.createElement('br'));
+            }
+        });
+        
+        // 重置文字變更標記
+        textChanged = false;
+        
+        return sentences;
+    }
+
+    // 高亮當前句子
+    function highlightCurrentSentence() {
+        // 清除所有高亮
+        sentenceElements.forEach(el => {
+            el.classList.remove('current-sentence');
+        });
+        
+        // 高亮當前句子
+        if (sentenceElements[currentIdx]) {
+            sentenceElements[currentIdx].classList.add('current-sentence');
+            
+            // 滾動到可見區域
+            sentenceElements[currentIdx].scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }
+    }
+
+    // 朗讀指定句子
+    function speakSentence(index) {
+        if (index < 0 || index >= sentences.length) {
+            statusDiv.innerText = "朗讀結束。";
+            isPaused = false;
+            currentUtterance = null;
+            return;
+        }
+
+        currentIdx = index;
+        highlightCurrentSentence();
+        
+        // 停止當前的發音
+        if (currentUtterance) {
+            synth.cancel();
+        }
+        
+        const utterance = new SpeechSynthesisUtterance(sentences[currentIdx]);
+        currentUtterance = utterance;
+        
+        // 設置語音參數
+        utterance.rate = parseFloat(document.getElementById('rate').value) * currentVoiceSettings.intonation;
+        utterance.pitch = currentVoiceSettings.pitch;
+        utterance.volume = currentVoiceSettings.volume;
+        
+        // 獲取選中的語音
+        const selectedVoiceName = voiceSelect.value;
+        const selectedVoice = allVoices.find(v => v.name === selectedVoiceName) || filteredVoices[0];
+        
+        if (selectedVoice) {
+            utterance.voice = selectedVoice;
+        }
+        
+        utterance.onstart = () => {
+            statusDiv.innerText = `朗讀中: ${currentIdx + 1}/${sentences.length} (${selectedVoiceName})`;
+            isPaused = false;
+        };
+        
+        utterance.onend = () => {
+            if (!isPaused && currentIdx < sentences.length - 1) {
+                // 自動播放下一句
+                currentIdx++;
+                speakSentence(currentIdx);
+            } else if (currentIdx >= sentences.length - 1) {
+                statusDiv.innerText = "朗讀結束。";
+                isPaused = false;
+                currentUtterance = null;
+            }
+        };
+        
+        utterance.onerror = (event) => {
+            console.error('SpeechSynthesisUtterance error:', event);
+            statusDiv.innerText = "朗讀錯誤。";
+            isPaused = false;
+            currentUtterance = null;
+        };
+        
+        synth.speak(utterance);
+    }
+
+    // 切換播放/暫停
+    function togglePlay() {
+        const text = textDisplay.textContent.trim();
+        
+        // 檢查是否為預設提示文字
+        if (!text || text === "身入紅塵千百劫... 請輸入或貼上您的文字。") {
+            statusDiv.innerText = "請先輸入或貼上要朗讀的文字。";
+            return;
+        }
+        
+        // 如果文字有變更或句子為空，重新準備文本
+        if (textChanged || sentences.length === 0) {
+            prepareTextForHighlighting();
+        }
+        
+        if (sentences.length === 0) {
+            statusDiv.innerText = "沒有可朗讀的內容，請輸入更多文字。";
+            return;
+        }
+        
+        if (synth.speaking) {
+            if (synth.paused) {
+                // 繼續播放
+                synth.resume();
+                statusDiv.innerText = `繼續朗讀: ${currentIdx + 1}/${sentences.length}`;
+                isPaused = false;
+            } else {
+                // 暫停播放
+                synth.pause();
+                statusDiv.innerText = "已暫停。";
+                isPaused = true;
+            }
+        } else {
+            // 開始新的朗讀
+            // 如果已經在結尾，從頭開始
+            if (currentIdx >= sentences.length) {
+                currentIdx = 0;
+            }
+            
+            isPaused = false;
+            speakSentence(currentIdx);
+        }
+    }
+
+    // 上一句功能
+    function prevSentence() {
+        if (sentences.length === 0) {
+            statusDiv.innerText = "沒有可朗讀的內容。";
+            return;
+        }
+        
+        synth.cancel();
+        currentIdx = Math.max(0, currentIdx - 1);
+        speakSentence(currentIdx);
+    }
+
+    // 下一句功能
+    function nextSentence() {
+        if (sentences.length === 0) {
+            statusDiv.innerText = "沒有可朗讀的內容。";
+            return;
+        }
+        
+        synth.cancel();
+        currentIdx = Math.min(sentences.length - 1, currentIdx + 1);
+        speakSentence(currentIdx);
+    }
+
+    // 停止朗讀
+    function stopSpeaking() {
+        synth.cancel();
+        isPaused = false;
+        currentUtterance = null;
+        
+        // 清除高亮
+        sentenceElements.forEach(el => {
+            el.classList.remove('current-sentence');
+        });
+        
+        statusDiv.innerText = "已停止。";
+    }
+
+    // 事件監聽
+    playPauseBtn.addEventListener('click', togglePlay);
+    
+    document.getElementById('stopBtn').addEventListener('click', stopSpeaking);
+    
+    document.getElementById('prevBtn').addEventListener('click', prevSentence);
+    
+    document.getElementById('nextBtn').addEventListener('click', nextSentence);
+    
+    // 語速改變時更新當前發音
+    document.getElementById('rate').addEventListener('change', () => {
+        if (synth.speaking && !synth.paused && currentUtterance) {
+            // 重新開始當前句子以應用新語速
+            const tempIdx = currentIdx;
+            synth.cancel();
+            setTimeout(() => speakSentence(tempIdx), 100);
+        }
+    });
+    
+    // 語音改變時更新當前發音
+    voiceSelect.addEventListener('change', () => {
+        if (synth.speaking && !synth.paused && currentUtterance) {
+            // 重新開始當前句子以應用新語音
+            const tempIdx = currentIdx;
+            synth.cancel();
+            setTimeout(() => speakSentence(tempIdx), 100);
+        }
+    });
+
+    // 鍵盤快捷鍵（新增 F/1 和 J/2 功能）
+    window.addEventListener('keydown', (e) => {
+        // 防止在編輯文本時觸發快捷鍵
+        if (e.target === textDisplay && e.code !== "Escape") return;
+        
+        if (e.code === "Space") {
+            e.preventDefault();
+            togglePlay();
+        } else if (e.code === "Home" || e.code === "KeyF" || e.code === "Digit1") {
+            // 上一句：Home、F鍵、1鍵
+            e.preventDefault();
+            prevSentence();
+        } else if (e.code === "End" || e.code === "KeyJ" || e.code === "Digit2") {
+            // 下一句：End、J鍵、2鍵
+            e.preventDefault();
+            nextSentence();
+        } else if (e.code === "Escape") {
+            e.preventDefault();
+            stopSpeaking();
+        }
+    });
+    
+    // 初始化頁面
+    initPage();
+    
+    // 監聽語音加載完成
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = populateVoiceList;
+    }
+    
+    // 初始化狀態
+    statusDiv.innerText = "準備就緒。輸入文字後按空格鍵開始朗讀。";
+</script>
+
+</body>
+</html>
